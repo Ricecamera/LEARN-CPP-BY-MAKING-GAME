@@ -393,3 +393,6 @@ FodyWeavers.xsd
 *.exe
 *.out
 *.app
+
+# Extra
+/0random/*
