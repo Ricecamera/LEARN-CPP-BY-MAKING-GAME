@@ -8,8 +8,8 @@ using namespace std;
 
 enum GameResult {
 	Tie,
-	PlayerOneWin,
-	PlayerTwoWin
+	PlayerOneWin, // Circle win
+	PlayerTwoWin // Cross win
 };
 
 const int IGNORE_CHARS = 256;
@@ -18,10 +18,10 @@ const char* INPUT_ERROR_STRING = "Input error! Please try again.";
 void PlayGame(int starter);
 bool WantToPlayAgain(int& lastStarter);
 
-int GetPlayerInput(int playerTurn, char* validPos, int dynamicSize);
+int GetPlayerInput(int playerTurn, DynamicArray* validPos);
 
 void DrawBoard(char* Board);
-void UpdateBoard(char* Board, int playerTurn, int placePosition, char* validPos, int &dynamicSize);
+void UpdateBoard(char* Board, int playerTurn, int placePosition);
 
 bool IsGameOver(char* Board, int& playerTurn, GameResult& result);
 
@@ -48,16 +48,15 @@ void PlayGame(int stater) {
 	}
 	DrawBoard(Board); // Display empty board
 
-	int dynamicSize;
-	char* validPos = CreateDynamicArray(BOARD_SIZE, dynamicSize);
-	for (int i = 0; i < dynamicSize; ++i) {
-		validPos[i] = i + 1 + '0';
+	DynamicArray* validPos = CreateDynamicArray(BOARD_SIZE);
+	for (int i = 0; i < validPos->capacity; ++i) {
+		InsertElement(validPos, i + 1 + '0');
 	}
 
 	int position;
 	do {
-		position = GetPlayerInput(playerTurn, validPos, dynamicSize);
-		UpdateBoard(Board, playerTurn, position, validPos, dynamicSize); 
+		position = GetPlayerInput(playerTurn, validPos);
+		UpdateBoard(Board, playerTurn, position); 
 		DrawBoard(Board);
 	} while (!IsGameOver(Board, playerTurn, result));
 
@@ -77,25 +76,24 @@ void PlayGame(int stater) {
 		break;
 	}
 	delete[] Board;
-	DeleteDynamicArray(validPos, dynamicSize);
+	DeleteDynamicArray(validPos);
 }
 
-int GetPlayerInput(int playerTurn, char* validPos, int dynamicSize) {
+int GetPlayerInput(int playerTurn, DynamicArray* validPos) {
 	cout << "-------Player" << playerTurn << "'s turn-------\n";
-	char input = GetCharacter("Pls, select your position (1-9): ", INPUT_ERROR_STRING, validPos, dynamicSize);
+	char input = GetCharacter("Pls, select your position (1-9): ", INPUT_ERROR_STRING, validPos->dynamicArray, validPos->size);
 	int position = (input - '0') - 1;
-	DeleteElementByValue(validPos, input, dynamicSize);
+	DeleteElementByValue(validPos, input);
 	return position;
 }
 
-void UpdateBoard(char* Board, int playerTurn, int placePosition, char* validPos, int& dynamicSize) {
+void UpdateBoard(char* Board, int playerTurn, int placePosition) {
 	if (playerTurn == 1) {
 		Board[placePosition] = 'O';
 	}
 	else if (playerTurn == 2) {
 		Board[placePosition] = 'X';
 	}
-	DeleteElementByValue(validPos, placePosition, dynamicSize);
 }
 
 bool IsGameOver(char* Board, int& playerTurn, GameResult& result) {

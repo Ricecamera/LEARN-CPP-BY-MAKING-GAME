@@ -12,7 +12,8 @@
 
 using namespace std;
 
-char GetCharacter(const char* prompt, const char* error)
+
+char GetCharacter(const char* prompt, const char* error, CharacterCaseType charCase)
 {
 
 	const int IGNORE_CHARS = 256;
@@ -40,7 +41,12 @@ char GetCharacter(const char* prompt, const char* error)
 
 			if (isalpha(input))
 			{
-				input = tolower(input);
+				if (charCase == CC_UPPER_CASE) {
+					input = toupper(input);
+				}
+				else if (charCase == CC_LOWER_CASE) {
+					input = tolower(input);
+				}
 			}
 			else
 			{
@@ -113,52 +119,62 @@ void WaitForKeyPress()
 }
 
 
-char* CreateDynamicArray(int capacity, int& size) {
-	char* dynamicArray = new char[capacity]();
-	size = capacity;
-	return dynamicArray;
+DynamicArray* CreateDynamicArray(int capacity) {
+	DynamicArray* darray = new DynamicArray; 
+	darray->dynamicArray = new char[capacity]();
+	darray->capacity = capacity;
+	darray->size = 0;
+	return darray;
 }
 
-void DeleteDynamicArray(char* dynamicArray, int& size) {
-	delete[] dynamicArray;
-	size = 0;
+void DeleteDynamicArray(DynamicArray* darray) {
+	delete[] darray->dynamicArray;
+	delete darray;
+	darray = nullptr;
 }
 
-void InsertElement(char* dynamicArray, int element, int& size, int capacity) {
-	if (size + 1 > capacity) {
-		ResizeDynamicArray(dynamicArray, 2 * capacity);
+void InsertElement(DynamicArray* darray, char element) {
+	int size = darray->size;
+	if (size + 1 > darray->capacity) {
+		ResizeDynamicArray(darray, 2 * darray->capacity);
 	}
-	dynamicArray[size++] = element;
+	darray->dynamicArray[size++] = element;
+	darray->size = size;
 }
 
-void DeleteElementByIndex(char* dynamicArray, int elementIndex, int& size) {
-	for (int i = elementIndex; i + 1 < size; ++i) {
-		dynamicArray[i] = dynamicArray[i+1];
+void DeleteElementByIndex(DynamicArray* darray, int elementIndex) {
+	if (elementIndex >= darray->size) {
+		cout << "Index out of bound" << endl;
+		return;
 	}
-	size--;
+	for (int i = elementIndex; i + 1 < darray->size; ++i) {
+		darray->dynamicArray[i] = darray->dynamicArray[i+1];
+	}
+	darray->size--;
 }
 
-void DeleteElementByValue(char* dynamicArray, char elementValue, int& size) {
+void DeleteElementByValue(DynamicArray* darray, char elementValue) {
 	int idx = 0;
-	for (; idx < size; ++idx) {
-		if (elementValue == dynamicArray[idx]) {
+	for (; idx < darray->size; ++idx) {
+		if (elementValue == darray->dynamicArray[idx]) {
 			break;
 		}
 	}
 
-	if (idx == size) {
-		cout << "index out of bound" << endl;
+	if (idx == darray->size) {
+		cout << "Not found" << endl;
 		return;
 	}
-	DeleteElementByIndex(dynamicArray, idx, size);
+	DeleteElementByIndex(darray, idx);
 }
 
-void ResizeDynamicArray(char* dynamicArray, int newCapacity) {
+void ResizeDynamicArray(DynamicArray* darray, int newCapacity) {
 	char* newArray = new char[newCapacity]();
 	for (int i = 0; i < newCapacity / 2; ++i) {
-		newArray[i] = dynamicArray[i];
+		newArray[i] = darray->dynamicArray[i];
 	}
-	delete[] dynamicArray;
-	dynamicArray = newArray;
+	delete[] darray->dynamicArray;
+	darray->dynamicArray = newArray;
+	darray->capacity = newCapacity;
 }
 
