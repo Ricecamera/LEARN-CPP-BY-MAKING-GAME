@@ -55,7 +55,7 @@ void MoveCursor(int xPos, int yPos)
 	move(yPos, xPos);
 }
 
-void DrawSprite(int xPos, int yPos, const char * sprite, int spriteHeight, int offset)
+void DrawSprite(int xPos, int yPos, const char * sprite[], int spriteHeight, int offset)
 {
 	for(int h = 0; h < spriteHeight; h++)
 	{

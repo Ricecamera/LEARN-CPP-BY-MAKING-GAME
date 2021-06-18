@@ -8,8 +8,7 @@
 #ifndef CURSESUTILS_H_
 #define CURSESUTILS_H_
 
-#include <ncurses.h> //Mac, Linux
-// #include "curses.h" - Windows
+#include "curses.h"
 
 enum ArrowKeys
 {
@@ -28,5 +27,6 @@ int ScreenHeight();
 int GetChar();
 void DrawCharacter(int xPos, int yPos, char aCharacter);
 void MoveCursor(int xPos, int yPos);
+void DrawSprite(int xPos, int yPos, const char* sprite[], int spriteHeight, int offset = 0);
 
 #endif /* CURSESUTILS_H_ */
