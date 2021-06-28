@@ -6,9 +6,14 @@
 
 const char* PLAYER_SPRITE[] = { " =A= ", "=====" };
 const char PLAYER_MISSILE_SPRITE = '|';
+const char* SHIELD_SPRITE[] = { "/IIIII\\", "IIIIIII", "I/   \\I"};
+const char* ALIEN30_SPRITE[] = { "/oo\\", "<  >", "/oo\\", "/\"\"\\" };
+const char* ALIEN20_SPRITE[] = { " >< ", "|\\/|", "|><|", "/  \\" };
+const char* ALIEN10_SPRITE[] = { "/--\\", "/  \\", "/--\\", "<  >" };
 
 enum {
 	SHEILD_SPRITE_HEIGHT = 3,
+	SHEILD_SPRITE_WIDTH = 7,
 	NUM_ALIEN_ROWS = 5,
 	NUM_ALIEN_COLUMNS = 11,
 	MAX_NUMBER_OF_ALIEN_BOMBS = 3,
@@ -18,7 +23,11 @@ enum {
 	NOT_IN_PLAY = -1,
 	PLAYER_MOVEMENT_AMOUNT = 3,
 	PLAYER_MISSILE_SPEED = 1,
-	FPS = 24
+	FPS = 24,
+	NUM_SHIELDS = 4,
+	ALIEN_SPRITE_WIDTH = 4,
+	ALIEN_SPRITE_HEIGHT = 2,
+	ALIEN_PADDING = 1
 };
 
 enum AlienState {
