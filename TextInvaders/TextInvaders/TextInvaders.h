@@ -2,8 +2,8 @@
 #define TEXTINVADER_H_
 
 #include <vector>
-#include <string>
 #include <ctime>
+#include <string>
 
 const char* PLAYER_SPRITE[] = { " =A= ", "=====" };
 const char* PLAYER_EXPLOSION_SPRITE[] = { ",~^,'", "=====", "'+-`.", "=====" };
@@ -16,6 +16,7 @@ const char* ALIEN_EXPLOSION[] = { "\\||/", "/||\\" };
 const char* ALIEN_BOMB_SPRITE = "\\|/-";
 const char* ALIEN_UFO_SPRITE[] = { "_/oo\\_", "=q==p=" };
 
+const char* filename = "TextInvaderScoreTable.txt";
 enum {
 	SHEILD_SPRITE_HEIGHT = 3,
 	SHEILD_SPRITE_WIDTH = 7,
@@ -38,7 +39,9 @@ enum {
 	WAIT_TIME = 10,
 	NUM_LEVELS = 10,
 	UFO_SPRITE_WIDTH = 6,
-	UFO_SPRITE_HEIGHT = 2
+	UFO_SPRITE_HEIGHT = 2,
+	MAX_LENGHT_OF_NAME = 5,
+	MAX_HIGH_SCORES = 10
 };
 
 enum AlienState {
@@ -121,6 +124,10 @@ struct Game {
 	int level;
 	int waitTimer;
 	clock_t gameTimer;
+
+	int gameOverHPositionCursor;
+	char playerName[MAX_LENGHT_OF_NAME + 1];
+	int gameOverVPositionCursor[MAX_LENGHT_OF_NAME];
 };
 
 #endif
