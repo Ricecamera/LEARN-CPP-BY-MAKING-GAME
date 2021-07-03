@@ -22,7 +22,7 @@ void CollideShieldsWithAlien(Shield shields[], int numberOfShields, int alienPos
 
 int HandleInput(Game& game, Player& player, AlienSwarm& aliens, Shield shields[], int numberOfShields);
 void PlayerShoot(Player& player);
-void UpdateGame(Game& game, Player& player, Shield shields[], int numberOfShield, AlienSwarm& aliens);
+void UpdateGame(clock_t dt, Game& game, Player& player, Shield shields[], int numberOfShield, AlienSwarm& aliens, AlienUFO& ufo);
 void UpdateMissile(Player& player);
 bool UpdateAliens(Game& game, AlienSwarm& aliens, Player& player, Shield shields[], int numberOfShields);
 bool UpdateBombs(const Game& game, AlienSwarm& aliens, Player& player, Shield shield[], int numberOfShields);
@@ -30,19 +30,23 @@ void MovePlayer(const Game& game, Player& player, int dx);
 void FindEmptyRowAndColumns(const AlienSwarm& aliens, int& emptyColLeft, int& emptyColRight, int& emptyRowsBottom);
 bool ShouldShootBomb(const AlienSwarm& aliens);
 void ShootBomb(AlienSwarm& aliens, int columnToShoot);
+void PutUFOInPlay(Game& game, AlienUFO& ufo);
+void UpdateUFO(Game& game, AlienUFO& ufo);
 
-void DrawGame(const Game& game, const Player& player, Shield shields[], int numberOfShields, const AlienSwarm& aliens);
+void DrawGame(const Game& game, const Player& player, Shield shields[], int numberOfShields, const AlienSwarm& aliens, AlienUFO& ufo);
 void DrawPlayer(const Player& player, const char* sprite[]);
 void DrawShields(const Shield shields[], int numberOfShields);
 void DrawAliens(const AlienSwarm& aliens);
 void DrawGameOverScreen(const Game& game);
 void DrawIntroScreen(const Game& game);
+void DrawUFO(const AlienUFO& ufo);
 
 void ResetGame(Game& game, Player& player, AlienSwarm& aliens, Shield shields[], int numberOfShield);
 void ResetShields(const Game& game, Shield shields[], int numberOfShields);
 void ResetPlayer(const Game& game, Player& player);
 void ResetMissile(Player& player);
 void ResetMovementTime(AlienSwarm& aliens);
+void ResetUFO(AlienUFO& ufo);
 
 int main() {
 	srand(time(NULL));
@@ -51,6 +55,7 @@ int main() {
 	Player player;
 	Shield shields[NUM_SHIELDS];
 	AlienSwarm aliens;
+	AlienUFO ufo;
 	
 	InitializeCurses(true);
 	InitGame(game);
@@ -58,6 +63,7 @@ int main() {
 	InitPlayer(game, player);
 	InitShields(game, shields, NUM_SHIELDS);
 	InitAliens(game, aliens);
+	ResetUFO(ufo);
 
 	bool quit = false;
 	int input{ 0 };
@@ -73,9 +79,9 @@ int main() {
 			if (dt > CLOCKS_PER_SEC / FPS) {
 				lastTime = currentTime;
 
-				UpdateGame(game, player, shields, NUM_SHIELDS, aliens);
+				UpdateGame(dt, game, player, shields, NUM_SHIELDS, aliens, ufo);
 				ClearScreen();
-				DrawGame(game, player, shields, NUM_SHIELDS, aliens);
+				DrawGame(game, player, shields, NUM_SHIELDS, aliens, ufo);
 				RefreshScreen();
 			}
 			
@@ -163,7 +169,9 @@ int HandleInput(Game& game, Player& player, AlienSwarm& aliens, Shield shields[]
 	return ' ';
 }
 
-void UpdateGame(Game& game, Player& player, Shield shields[], int numberOfShield, AlienSwarm& aliens) {
+void UpdateGame(clock_t dt, Game& game, Player& player, Shield shields[], int numberOfShield, AlienSwarm& aliens, AlienUFO& ufo) {
+	game.gameTimer += dt;
+
 	if (game.currentState == GS_PLAY) {
 		UpdateMissile(player);
 
@@ -192,6 +200,24 @@ void UpdateGame(Game& game, Player& player, Shield shields[], int numberOfShield
 			game.currentState = GS_WAIT;
 			game.waitTimer = WAIT_TIME;
 			ResetGame(game, player, aliens, shields, numberOfShield);
+		}
+
+		if (ufo.position.x == NOT_IN_PLAY) {
+			//put the ufo in play somehow
+			if (game.gameTimer % 500 == 13) {
+				PutUFOInPlay(game, ufo);
+			}
+		}
+		else {
+			//update the ufo
+			if (IsColission(player.missile, ufo.position, ufo.size)) {
+				player.score += ufo.points;
+				ResetMissile(player);
+				ResetUFO(ufo);
+			}
+			else {
+				UpdateUFO(game, ufo);
+			}
 		}
 		
 	}
@@ -284,7 +310,7 @@ bool UpdateAliens(Game& game, AlienSwarm& aliens, Player& player, Shield shields
 		&& moveHorizontal && (aliens.line > 0)) {
 		//move down
 		moveHorizontal = false;
-		aliens.position.y++;
+		aliens.position.y += aliens.spriteSize.height;
 		aliens.line--;
 		aliens.direction = -aliens.direction;
 		ResetMovementTime(aliens);
@@ -332,7 +358,7 @@ bool UpdateAliens(Game& game, AlienSwarm& aliens, Player& player, Shield shields
 	return false;
 }
 
-void DrawGame(const Game& game, const Player& player, Shield shields[], int numberOfShields, const AlienSwarm& aliens) {
+void DrawGame(const Game& game, const Player& player, Shield shields[], int numberOfShields, const AlienSwarm& aliens, AlienUFO& ufo) {
 	if (game.currentState == GS_PLAY || game.currentState == GS_WAIT || game.currentState == GS_PLAYER_DEAD) {
 		if (game.currentState == GS_PLAY || game.currentState == GS_WAIT) {
 			DrawPlayer(player, PLAYER_SPRITE);
@@ -343,6 +369,7 @@ void DrawGame(const Game& game, const Player& player, Shield shields[], int numb
 
 		DrawShields(shields, numberOfShields);
 		DrawAliens(aliens);
+		DrawUFO(ufo);
 	}
 	else if (game.currentState == GS_GAME_OVER) {
 		DrawGameOverScreen(game);
@@ -465,7 +492,7 @@ void InitAliens(const Game& game, AlienSwarm& aliens) {
 	aliens.numberOfBombsInPlay = 0;
 	aliens.position.x = (game.windowSize.width - NUM_ALIEN_COLUMNS * (ALIEN_SPRITE_WIDTH + ALIEN_PADDING)) / 2;
 	aliens.position.y = game.windowSize.height - NUM_ALIEN_COLUMNS - NUM_ALIEN_ROWS * ALIEN_SPRITE_HEIGHT - ALIEN_PADDING - NUM_ALIEN_ROWS - 1 - 3 + game.level;
-	aliens.line = NUM_ALIEN_COLUMNS - (game.level - 1);
+	aliens.line = 7 - (game.level - 1);
 	aliens.explosionTimer = 0;
 
 	for (int i = 0; i < MAX_NUMBER_OF_ALIEN_BOMBS; i++) {
@@ -576,7 +603,7 @@ int ResolveAlienCollison(AlienSwarm& aliens, const Position& hitPositionInAliens
 }
 
 void ResetMovementTime(AlienSwarm& aliens) {
-	aliens.movementTime = aliens.line * 2 + (5 * (float(aliens.numAliensLeft) / float(NUM_ALIEN_COLUMNS * NUM_ALIEN_ROWS)));
+	aliens.movementTime =  aliens.line * 2 + (5 * (float(aliens.numAliensLeft) / float(NUM_ALIEN_COLUMNS * NUM_ALIEN_ROWS)));
 }
 
 void DestroyShields(const AlienSwarm& aliens, Shield shields[], int numberOfShields) {
@@ -733,4 +760,31 @@ void DrawIntroScreen(const Game& game) {
 
 	DrawString(startXPos, yPos, startString);
 	DrawString(pressSpaceXPos, yPos + 1, pressSpaceString);
+}
+
+void ResetUFO(AlienUFO& ufo) {
+	ufo.size.width = UFO_SPRITE_WIDTH;
+	ufo.size.height = UFO_SPRITE_HEIGHT;
+
+	ufo.points = ((rand() % 4) + 1) * 50;
+
+	ufo.position.x = NOT_IN_PLAY; // No ufo on the screen
+	ufo.position.y = ufo.size.height;
+}
+
+void PutUFOInPlay(Game& game, AlienUFO& ufo) {
+	ufo.position.x = 0;
+}
+
+void UpdateUFO(Game& game, AlienUFO& ufo) {
+	ufo.position.x += 1;
+	if (ufo.position.x + ufo.size.width >= game.windowSize.width) {
+		ResetUFO(ufo);
+	}
+}
+
+void DrawUFO(const AlienUFO& ufo) {
+	if (ufo.position.x != NOT_IN_PLAY) {
+		DrawSprite(ufo.position.x, ufo.position.y, ALIEN_UFO_SPRITE, ALIEN_SPRITE_HEIGHT);
+	}
 }
