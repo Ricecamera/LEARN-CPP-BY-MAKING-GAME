@@ -5,19 +5,21 @@
 #include <string>
 
 const char* PLAYER_SPRITE[] = { " =A= ", "=====" };
+const char* PLAYER_EXPLOSION_SPRITE[] = { ",~^,'", "=====", "'+-`.", "=====" };
 const char PLAYER_MISSILE_SPRITE = '|';
 const char* SHIELD_SPRITE[] = { "/IIIII\\", "IIIIIII", "I/   \\I"};
 const char* ALIEN30_SPRITE[] = { "/oo\\", "<  >", "/oo\\", "/\"\"\\" };
 const char* ALIEN20_SPRITE[] = { " >< ", "|\\/|", "|><|", "/  \\" };
 const char* ALIEN10_SPRITE[] = { "/--\\", "/  \\", "/--\\", "<  >" };
 const char* ALIEN_EXPLOSION[] = { "\\||/", "/||\\" };
+const char* ALIEN_BOMB_SPRITE = "\\|/-";
 
 enum {
 	SHEILD_SPRITE_HEIGHT = 3,
 	SHEILD_SPRITE_WIDTH = 7,
 	NUM_ALIEN_ROWS = 5,
 	NUM_ALIEN_COLUMNS = 11,
-	MAX_NUMBER_OF_ALIEN_BOMBS = 3,
+	MAX_NUMBER_OF_ALIEN_BOMBS = 5,
 	MAX_NUMBER_OF_LIVES = 3,
 	PLAYER_SPRITE_WIDTH = 5,
 	PLAYER_SPRITE_HEIGHT = 2,
@@ -29,7 +31,10 @@ enum {
 	ALIEN_SPRITE_WIDTH = 4,
 	ALIEN_SPRITE_HEIGHT = 2,
 	ALIEN_PADDING = 1,
-	ALIEN_EXPLOSION_TIME = 4
+	ALIEN_EXPLOSION_TIME = 4,
+	ALIEN_BOMB_SPEED = 1,
+	WAIT_TIME = 10,
+	NUM_LEVELS = 10
 };
 
 enum AlienState {
@@ -110,6 +115,7 @@ struct Game {
 	Size windowSize;
 	GameState currentState;
 	int level;
+	int waitTimer;
 };
 
 #endif

@@ -62,3 +62,7 @@ void DrawSprite(int xPos, int yPos, const char * sprite[], int spriteHeight, int
 		mvprintw(yPos + h, xPos, "%s", sprite[h + offset]);
 	}
 }
+
+void DrawString(int xPos, int yPos, const char* string) {
+	mvprintw(yPos, xPos, string);
+}
