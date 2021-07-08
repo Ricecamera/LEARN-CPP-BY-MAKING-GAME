@@ -7,12 +7,13 @@
 
 const char APPLE_SPRITE = 'O';
 const char SNAKE_SPRITE = '#';
+const char SNAKE_HEAD_SPRITE = 'C';
 
 enum {
 	MAX_NUMBER_OF_LIVE = 3,
 	MAX_NUMBER_OF_APPLE = 3,
 	APPLE_RESPAWN_TIME = 5,
-	PLAYER_SPEED = 3,
+	PLAYER_SPEED = 1,
 	FPS = 24,
 };
 
@@ -48,7 +49,12 @@ struct AppleSpawner {
 
 struct SnakePart {
 	Position position;
-	char sprite;
+
+	// Constructor
+	SnakePart(int xPos, int yPos) {
+		this->position.x = xPos;
+		this->position.y = yPos;
+	}
 };
 
 struct Player {
