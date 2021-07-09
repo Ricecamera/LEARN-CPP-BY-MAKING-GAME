@@ -9,6 +9,8 @@ void InitAppleSpawner(Game& game, AppleSpawner& appleSpawner);
 
 int HandleInput(Game& game, Player& player);
 void MovePlayer(const Game& game, Player& player);
+void ResetMovementTime(Player& player);
+void ChangePlayerDirection(Player& player, PlayerDirection direction);
 void UpdateGame(Game& game, Player& player, AppleSpawner& appleSpawner, clock_t dt);
 bool UpdateApple(const Game& game, Player& player, AppleSpawner& appleSpawner);
 void UpdatePlayer(Game& game, Player& player, bool isAppleEaten);
@@ -19,7 +21,6 @@ void DrawGame(const Game& game, const Player& player, const AppleSpawner& appleS
 void DrawPlayer(const Player& player);
 void DrawApples(const AppleSpawner& appleSpawner);
 
-void ResetMovementTime(Player& player);
 void ResetPlayer(Game& game, Player& player);
 
 int main() {
@@ -111,12 +112,16 @@ int HandleInput(Game& game, Player& player) {
 		return input;
 
 	case KEY_LEFT:
+		ChangePlayerDirection(player, PS_LEFT);
 		break;
 	case KEY_RIGHT:
+		ChangePlayerDirection(player, PS_RIGHT);
 		break;
 	case KEY_UP:
+		ChangePlayerDirection(player, PS_UP);
 		break;
 	case KEY_DOWN:
+		ChangePlayerDirection(player, PS_DOWN);
 		break;
 	}
 
@@ -132,24 +137,50 @@ void MovePlayer(const Game& game, Player& player) {
 	}
 
 	if (player.direction == PS_DOWN) {
-		HeadPos.y++;
+		HeadPos.y += PLAYER_SPEED;
 	}
 	else if (player.direction == PS_UP) {
-		HeadPos.y--;
+		HeadPos.y -= PLAYER_SPEED;
 	}
 	else if (player.direction == PS_RIGHT) {
-		HeadPos.x++;
+		HeadPos.x += PLAYER_SPEED;
 	}
 	else { // PS_LEFT
-		HeadPos.x--;
+		HeadPos.x -= PLAYER_SPEED;
 	}
 
 	player.body[0].position = HeadPos; // update next head position
 }
 
 void ResetMovementTime(Player& player) {
-	player.movementTime = 1;
+	player.movementTime = 2;
 }
+
+void ChangePlayerDirection(Player& player, PlayerDirection direction) {
+	switch (direction) {
+	case PS_UP:
+		if (player.direction != PS_DOWN) {
+			player.direction = PS_UP;
+		}
+		break;
+	case PS_LEFT:
+		if (player.direction != PS_RIGHT) {
+			player.direction = PS_LEFT;
+		}
+		break;
+	case PS_DOWN:
+		if (player.direction != PS_UP) {
+			player.direction = PS_DOWN;
+		}
+		break;
+	case PS_RIGHT:
+		if (player.direction != PS_LEFT) {
+			player.direction = PS_RIGHT;
+		}
+		break;
+	}
+}
+
 void UpdateGame(Game& game, Player& player, AppleSpawner& appleSpawner, clock_t dt) {
 	game.gameTimer += dt;
 
@@ -262,6 +293,5 @@ void UpdatePlayer(Game& game, Player& player, bool isAppleEaten) {
 		MovePlayer(game, player);
 		ResetMovementTime(player);
 	}
-
-	
 }
+
