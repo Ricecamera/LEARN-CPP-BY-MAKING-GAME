@@ -12,10 +12,11 @@ void MovePlayer(const Game& game, Player& player);
 void ResetMovementTime(Player& player);
 void ChangePlayerDirection(Player& player, PlayerDirection direction);
 void UpdateGame(Game& game, Player& player, AppleSpawner& appleSpawner, clock_t dt);
-bool UpdateApple(const Game& game, Player& player, AppleSpawner& appleSpawner);
-void UpdatePlayer(Game& game, Player& player, bool isAppleEaten);
+void UpdateApple(const Game& game, Player& player, AppleSpawner& appleSpawner);
+void UpdatePlayer(Game& game, Player& player, AppleSpawner& appleSpawner);
 
 bool IsCollision(Player& player, Apple& apple);
+void ResolveAppleCollision(Player& player, AppleSpawner& appleSpawner, Apple* apple);
 
 void DrawGame(const Game& game, const Player& player, const AppleSpawner& appleSpawner);
 void DrawPlayer(const Player& player);
@@ -132,21 +133,25 @@ void MovePlayer(const Game& game, Player& player) {
 	Position HeadPos = player.body[0].position; // save old position
 
 	// move body parts after the snake head
-	for (int i = 1; i < player.length; i++) {
+	for (int i = player.length - 1; i > 0; i--) {
 		player.body[i].position = player.body[i - 1].position;
 	}
 
-	if (player.direction == PS_DOWN) {
-		HeadPos.y += PLAYER_SPEED;
-	}
-	else if (player.direction == PS_UP) {
+	switch (player.direction) {
+	case PS_UP:
 		HeadPos.y -= PLAYER_SPEED;
-	}
-	else if (player.direction == PS_RIGHT) {
-		HeadPos.x += PLAYER_SPEED;
-	}
-	else { // PS_LEFT
+		break;
+	case PS_LEFT:
 		HeadPos.x -= PLAYER_SPEED;
+		break;
+	case PS_DOWN:
+		HeadPos.y += PLAYER_SPEED;
+		break;
+	case PS_RIGHT:
+		HeadPos.x += PLAYER_SPEED;
+		break;
+	default:
+		break;
 	}
 
 	player.body[0].position = HeadPos; // update next head position
@@ -185,10 +190,10 @@ void UpdateGame(Game& game, Player& player, AppleSpawner& appleSpawner, clock_t 
 	game.gameTimer += dt;
 
 	if (game.currentState == GS_PLAY) {
-		bool isAppleEaten = false;
-		isAppleEaten = UpdateApple(game, player, appleSpawner);
+		UpdatePlayer(game, player, appleSpawner);
+		UpdateApple(game, player, appleSpawner);
 
-		UpdatePlayer(game, player, isAppleEaten);
+		
 	}
 }
 
@@ -210,11 +215,15 @@ bool IsValidPosition(const AppleSpawner& applespawner, const Player& player, int
 	return true;
 }
 
-bool UpdateApple(const Game& game, Player& player, AppleSpawner& appleSpawner) {
+void UpdateApple(const Game& game, Player& player, AppleSpawner& appleSpawner) {
+	if (appleSpawner.appleInPlay == MAX_NUMBER_OF_APPLE) {
+		return;
+	}
 	int countdown = ++appleSpawner.spawnTimer; // increment every frame
 
 	// respawn a new apple
-	if (countdown > (FPS * APPLE_RESPAWN_TIME) && appleSpawner.appleInPlay < MAX_NUMBER_OF_APPLE) {
+	if (countdown > (FPS * APPLE_RESPAWN_TIME)) {
+
 		for (int i = 0; i < MAX_NUMBER_OF_APPLE; i++) {
 			Apple* apple = &appleSpawner.apples[i];
 			if (apple->position.x == NOT_IN_PLAY || apple->position.y == NOT_IN_PLAY) {
@@ -224,8 +233,8 @@ bool UpdateApple(const Game& game, Player& player, AppleSpawner& appleSpawner) {
 				// random position of the new apple
 				do {
 					count++;
-					xPos = rand() % (game.windowSize.width + 1);
-					yPos = rand() & (game.windowSize.height + 1);
+					xPos = rand() % (game.windowSize.width - 1);
+					yPos = rand() % (game.windowSize.height - 1);
 				} while (!IsValidPosition(appleSpawner, player, xPos, yPos) && count < 100);
 				
 				// spawn the new apple
@@ -240,19 +249,6 @@ bool UpdateApple(const Game& game, Player& player, AppleSpawner& appleSpawner) {
 			}
 		}
 	}
-
-	for (int i = 0; i < MAX_NUMBER_OF_APPLE; i++) {
-		Apple* apple = &appleSpawner.apples[i];
-		if (IsCollision(player, *apple)) {
-			player.score += apple->point;
-			
-			apple->position.x = NOT_IN_PLAY;
-			apple->position.y = NOT_IN_PLAY;
-			appleSpawner.appleInPlay--;
-			return true;
-		}
-	}
-	return false;
 }
 
 bool IsCollision(Player& player, Apple& apple) {
@@ -260,9 +256,19 @@ bool IsCollision(Player& player, Apple& apple) {
 	return (head.position.x == apple.position.x && head.position.y == apple.position.y);
 }
 
+
+void ResolveAppleCollision(Player& player, AppleSpawner& appleSpawner, Apple* apple) {
+	player.score += apple->point;
+
+	apple->position.x = NOT_IN_PLAY;
+	apple->position.y = NOT_IN_PLAY;
+	appleSpawner.appleInPlay--;
+}
+
 void DrawGame(const Game& game, const Player& player, const AppleSpawner& appleSpawner) {
-	DrawPlayer(player);
 	DrawApples(appleSpawner);
+	DrawPlayer(player);
+	
 }
 
 void DrawPlayer(const Player& player) {
@@ -281,17 +287,50 @@ void DrawApples(const AppleSpawner& appleSpawner) {
 	}
 }
 
-void UpdatePlayer(Game& game, Player& player, bool isAppleEaten) {
+void UpdatePlayer(Game& game, Player& player, AppleSpawner& appleSpawner) {
 	player.movementTime--;
-
-	if (isAppleEaten) {
-		// snake grow
-	}
 
 	if (player.movementTime < 0) {
 		// move player
 		MovePlayer(game, player);
 		ResetMovementTime(player);
+	}
+
+	// check if collision with apple
+	bool isAppleEaten = false;
+	for (int i = 0; i < MAX_NUMBER_OF_APPLE; i++) {
+		Apple* apple = &appleSpawner.apples[i];
+		if (IsCollision(player, *apple)) {
+			ResolveAppleCollision(player, appleSpawner, apple);
+			isAppleEaten = true;
+			break;
+		}
+	}
+
+	if (isAppleEaten) {
+		// snake grow
+		Position tailEndPos = player.body[player.length - 1].position;
+		switch (player.direction)
+		{
+		case PS_UP:
+			tailEndPos.y++;
+			break;
+		case PS_LEFT:
+			tailEndPos.x++;
+			break;
+		case PS_DOWN:
+			tailEndPos.y--;
+			break;
+		case PS_RIGHT:
+			tailEndPos.x--;
+			break;
+		default:
+			break;
+		}
+
+		SnakePart tailEnd(tailEndPos);
+		player.body.push_back(tailEnd);
+		player.length++;
 	}
 }
 
