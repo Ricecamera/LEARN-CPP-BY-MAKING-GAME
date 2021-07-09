@@ -1,6 +1,5 @@
 #include "TextInvaders.h"
 #include "CursesUtils.h"
-#include <ctime>
 #include <cstring>
 #include <cstdlib>
 #include <algorithm>
