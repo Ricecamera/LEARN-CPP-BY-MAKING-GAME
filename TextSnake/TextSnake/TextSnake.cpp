@@ -25,9 +25,11 @@ void DrawPlayer(const Player& player);
 void DrawApples(const AppleSpawner& appleSpawner);
 void ShowPlayerLive(const Game& game, const Player& player);
 void DrawIntroScreen(const Game& game);
+void DrawGameOverScreen(const Game& game);
 
 void ResetPlayer(Game& game, Player& player);
 void ResetApples(AppleSpawner& appleSpawner);
+void ResetGameOverPositionCursor(Game& game);
 
 int main() {
 	srand(time(NULL));
@@ -75,10 +77,12 @@ int main() {
 void InitGame(Game& game) {
 	game.windowSize.height = ScreenHeight();
 	game.windowSize.width = ScreenWidth();
-	game.currentState = GS_INTRO;
+	game.currentState = GS_GAME_OVER;
 	game.level = 1;
 	game.gameTimer = 0;
 	game.waitTimer = PLAYER_WAIT_TIME;
+
+	ResetGameOverPositionCursor(game);
 }
 
 void InitPlayer(Game& game, Player& player) {
@@ -126,20 +130,42 @@ int HandleInput(Game& game, Player& player) {
 		if (game.currentState == GS_PLAY) {
 			ChangePlayerDirection(player, PS_LEFT);
 		}
+		else if (game.currentState == GS_GAME_OVER) {
+			game.gameOverHPositionCursor -= 1;
+			if (game.gameOverHPositionCursor < 0) {
+				game.gameOverHPositionCursor = MAX_LENGTH_OF_NAME - 1;
+			}
+		}
 		break;
 	case KEY_RIGHT:
 		if (game.currentState == GS_PLAY) {
 			ChangePlayerDirection(player, PS_RIGHT);
+		}
+		else if (game.currentState == GS_GAME_OVER) {
+			game.gameOverHPositionCursor = (game.gameOverHPositionCursor + 1) % MAX_LENGTH_OF_NAME;
 		}
 		break;
 	case KEY_UP:
 		if (game.currentState == GS_PLAY) {
 			ChangePlayerDirection(player, PS_UP);
 		}
+		else if (game.currentState == GS_GAME_OVER) {
+			int idx = game.gameOverHPositionCursor;
+			game.gameOverVPositionCursor[idx] = (game.gameOverVPositionCursor[idx] + 1) % 26;
+		}
+		game.playerName[game.gameOverHPositionCursor] = 'A' + game.gameOverVPositionCursor[game.gameOverHPositionCursor];
 		break;
 	case KEY_DOWN:
 		if (game.currentState == GS_PLAY) {
 			ChangePlayerDirection(player, PS_DOWN);
+		}
+		else if (game.currentState == GS_GAME_OVER) {
+			game.gameOverVPositionCursor[game.gameOverHPositionCursor] -= 1;
+
+			if (game.gameOverVPositionCursor[game.gameOverHPositionCursor] < 0) {
+				game.gameOverVPositionCursor[game.gameOverHPositionCursor] = 26 - 1;
+			}
+			game.playerName[game.gameOverHPositionCursor] = 'A' + game.gameOverVPositionCursor[game.gameOverHPositionCursor];
 		}
 		break;
 	case ' ':
@@ -157,6 +183,9 @@ int HandleInput(Game& game, Player& player) {
 		else if (game.currentState == GS_INTRO) {
 			game.currentState = GS_WAIT;
 			game.waitTimer = PLAYER_WAIT_TIME;
+		}
+		else if (game.currentState == GS_GAME_OVER) {
+
 		}
 	}
 	
@@ -321,7 +350,7 @@ void DrawGame(const Game& game, const Player& player, const AppleSpawner& appleS
 		DrawIntroScreen(game);
 	}
 	else if (game.currentState == GS_GAME_OVER) {
-		
+		DrawGameOverScreen(game);
 	}
 	else if (game.currentState == GS_HIGH_SCORES) {
 
@@ -438,7 +467,44 @@ void DrawIntroScreen(const Game& game) {
 	const int pressSpaceXPos = game.windowSize.width / 2 - pressSpaceString.length() / 2;
 	const int pressSXPos = game.windowSize.width / 2 - pressSString.length() / 2;
 
-	DrawString(startXPos, yPos, startString.c_str());
-	DrawString(pressSpaceXPos, yPos + 1, pressSpaceString.c_str());
-	DrawString(pressSXPos, yPos + 2, pressSString.c_str());
+	DrawString(startXPos, yPos, startString);
+	DrawString(pressSpaceXPos, yPos + 1, pressSpaceString);
+	DrawString(pressSXPos, yPos + 2, pressSString);
+}
+
+void DrawGameOverScreen(const Game& game) {
+	string gameOverString = "Game Over!";
+	string pressSpaceString = "Press Space Bar to continue";
+	string namePromptString = "Please Enter you name: ";
+
+	const int yPos = game.windowSize.height / 2;
+
+	const int gameOverXPos = game.windowSize.width / 2 - gameOverString.length()/ 2;
+	const int pressSpaceXPos = game.windowSize.width / 2 - pressSpaceString.length() / 2;
+	const int namePromptXPos = game.windowSize.width / 2 - namePromptString.length() / 2;
+
+	DrawString(gameOverXPos, yPos, gameOverString);
+	DrawString(pressSpaceXPos, yPos + 1, pressSpaceString);
+	DrawString(namePromptXPos, yPos + 3, namePromptString);
+
+	for (int i = 0; i < MAX_LENGTH_OF_NAME; i++) {
+		if (i == game.gameOverHPositionCursor) {
+			attron(WA_UNDERLINE);
+		}
+
+		DrawCharacter(game.windowSize.width / 2 - MAX_LENGTH_OF_NAME / 2 + i, yPos + 5, game.playerName[i]);
+
+		if (i == game.gameOverHPositionCursor) {
+			attroff(WA_UNDERLINE);
+		}
+
+	}
+}
+
+void ResetGameOverPositionCursor(Game& game) {
+	game.gameOverHPositionCursor = 0;
+	for (int i = 0; i < MAX_LENGTH_OF_NAME; i++) {
+		game.playerName[i] = 'A';
+		game.gameOverVPositionCursor[i] = 0; // Be at 'A'
+	}
 }

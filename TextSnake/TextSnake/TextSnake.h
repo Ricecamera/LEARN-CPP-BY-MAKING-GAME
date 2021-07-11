@@ -20,6 +20,7 @@ enum {
 	NOT_IN_PLAY = -1,
 	PLAYER_WAIT_TIME = 48,
 	PLAYER_ANIMATION_LENGTH = 2,
+	MAX_LENGTH_OF_NAME = 4
 };
 
 enum GameState {
@@ -99,5 +100,9 @@ struct Game {
 	int level;
 	int waitTimer;
 	clock_t gameTimer;
+
+	int gameOverHPositionCursor;
+	char playerName[MAX_LENGTH_OF_NAME + 1];
+	int gameOverVPositionCursor[MAX_LENGTH_OF_NAME + 1];
 };
 #endif
