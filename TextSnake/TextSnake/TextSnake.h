@@ -7,17 +7,19 @@
 #include <cstdlib>
 
 const char APPLE_SPRITE = 'o';
-const char SNAKE_SPRITE = '#';
+const char SNAKE_SPRITE[] = { '#', ' '};
 
 enum {
 	MAX_NUMBER_OF_LIVE = 3,
-	MAX_NUMBER_OF_APPLE = 5,
+	MAX_NUMBER_OF_APPLE = 4,
 	APPLE_RESPAWN_TIME = 5,
 	APPLE_POINT = 10,
 	PLAYER_SPEED = 1,
 	PLAYER_START_LENGTH = 2,
 	FPS = 24,
-	NOT_IN_PLAY = -1
+	NOT_IN_PLAY = -1,
+	PLAYER_WAIT_TIME = 48,
+	PLAYER_ANIMATION_LENGTH = 2,
 };
 
 enum GameState {
@@ -64,6 +66,10 @@ struct SnakePart {
 		this->position.x = xPos;
 		this->position.y = yPos;
 	}
+
+	SnakePart(Position pos) {
+		this->position = pos;
+	}
 };
 
 struct Player {
@@ -73,7 +79,9 @@ struct Player {
 
 	PlayerDirection direction;
 	int movementTime;
+	int animation;
 	std::vector<SnakePart> body; // head is on index zero
+	
 };
 
 struct Score {
@@ -89,6 +97,7 @@ struct Game {
 	Size windowSize;
 	GameState currentState;
 	int level;
+	int waitTimer;
 	clock_t gameTimer;
 };
 #endif

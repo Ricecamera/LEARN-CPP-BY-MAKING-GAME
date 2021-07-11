@@ -5,7 +5,7 @@ using namespace std;
 
 void InitGame(Game& game);
 void InitPlayer(Game& game, Player& player);
-void InitAppleSpawner(Game& game, AppleSpawner& appleSpawner);
+void InitAppleSpawner(AppleSpawner& appleSpawner);
 
 int HandleInput(Game& game, Player& player);
 void MovePlayer(const Game& game, Player& player);
@@ -16,13 +16,18 @@ void UpdateApple(const Game& game, Player& player, AppleSpawner& appleSpawner);
 void UpdatePlayer(Game& game, Player& player, AppleSpawner& appleSpawner);
 
 bool IsCollision(Player& player, Apple& apple);
+bool IsSelfCollision(vector<SnakePart>& snakeBody);
+bool PlayerOutOfBound(const Game& game, const SnakePart& snakeHead);
 void ResolveAppleCollision(Player& player, AppleSpawner& appleSpawner, Apple* apple);
 
 void DrawGame(const Game& game, const Player& player, const AppleSpawner& appleSpawner);
 void DrawPlayer(const Player& player);
 void DrawApples(const AppleSpawner& appleSpawner);
+void ShowPlayerLive(const Game& game, const Player& player);
+void DrawIntroScreen(const Game& game);
 
 void ResetPlayer(Game& game, Player& player);
+void ResetApples(AppleSpawner& appleSpawner);
 
 int main() {
 	srand(time(NULL));
@@ -34,7 +39,7 @@ int main() {
 	InitializeCurses(true);
 	InitGame(game);
 	InitPlayer(game, player);
-	InitAppleSpawner(game, appleSpawner);
+	InitAppleSpawner(appleSpawner);
 
 	bool quit = false;
 	int input{ 0 };
@@ -70,32 +75,37 @@ int main() {
 void InitGame(Game& game) {
 	game.windowSize.height = ScreenHeight();
 	game.windowSize.width = ScreenWidth();
-	game.currentState = GS_PLAY;
+	game.currentState = GS_INTRO;
 	game.level = 1;
 	game.gameTimer = 0;
+	game.waitTimer = PLAYER_WAIT_TIME;
 }
 
 void InitPlayer(Game& game, Player& player) {
-	for (int i = 0; i < PLAYER_START_LENGTH; i++) {
-		SnakePart block(game.windowSize.width / 2 + i, game.windowSize.height / 2);
-		player.body.push_back(block);
-	}
-	
-	
-	player.length = PLAYER_START_LENGTH;
 	player.live = MAX_NUMBER_OF_LIVE;
 	player.score = 0;
-	player.direction = PS_LEFT;
-	ResetMovementTime(player);
+	ResetPlayer(game, player);
 }
 
 
 void ResetPlayer(Game& game, Player& player) {
 	player.body.clear();
-	InitPlayer(game, player);
+	for (int i = 0; i < PLAYER_START_LENGTH; i++) {
+		SnakePart block(game.windowSize.width / 2 + i, game.windowSize.height / 2);
+		player.body.push_back(block);
+	}
+
+	player.length = PLAYER_START_LENGTH;
+	player.direction = PS_LEFT;
+	player.animation = 0;
+	ResetMovementTime(player);
 }
 
-void InitAppleSpawner(Game& game, AppleSpawner& appleSpawner) {
+void InitAppleSpawner(AppleSpawner& appleSpawner) {
+	ResetApples(appleSpawner);
+}
+
+void ResetApples(AppleSpawner& appleSpawner) {
 	for (int i = 0; i < MAX_NUMBER_OF_APPLE; i++) {
 		appleSpawner.apples[i].position.x = NOT_IN_PLAY;
 		appleSpawner.apples[i].position.y = NOT_IN_PLAY;
@@ -113,18 +123,44 @@ int HandleInput(Game& game, Player& player) {
 		return input;
 
 	case KEY_LEFT:
-		ChangePlayerDirection(player, PS_LEFT);
+		if (game.currentState == GS_PLAY) {
+			ChangePlayerDirection(player, PS_LEFT);
+		}
 		break;
 	case KEY_RIGHT:
-		ChangePlayerDirection(player, PS_RIGHT);
+		if (game.currentState == GS_PLAY) {
+			ChangePlayerDirection(player, PS_RIGHT);
+		}
 		break;
 	case KEY_UP:
-		ChangePlayerDirection(player, PS_UP);
+		if (game.currentState == GS_PLAY) {
+			ChangePlayerDirection(player, PS_UP);
+		}
 		break;
 	case KEY_DOWN:
-		ChangePlayerDirection(player, PS_DOWN);
+		if (game.currentState == GS_PLAY) {
+			ChangePlayerDirection(player, PS_DOWN);
+		}
 		break;
+	case ' ':
+		if (game.currentState == GS_PLAYER_DEAD) {
+			player.live--;
+			player.animation = 0;
+			if (player.live == 0) {
+				game.currentState = GS_GAME_OVER;
+			}
+			else {
+				game.currentState = GS_WAIT;
+				game.waitTimer = PLAYER_WAIT_TIME;
+			}
+		}
+		else if (game.currentState == GS_INTRO) {
+			game.currentState = GS_WAIT;
+			game.waitTimer = PLAYER_WAIT_TIME;
+		}
 	}
+	
+
 
 	return ' ';
 }
@@ -158,7 +194,7 @@ void MovePlayer(const Game& game, Player& player) {
 }
 
 void ResetMovementTime(Player& player) {
-	player.movementTime = 2;
+	player.movementTime = 3;
 }
 
 void ChangePlayerDirection(Player& player, PlayerDirection direction) {
@@ -190,10 +226,25 @@ void UpdateGame(Game& game, Player& player, AppleSpawner& appleSpawner, clock_t 
 	game.gameTimer += dt;
 
 	if (game.currentState == GS_PLAY) {
-		UpdatePlayer(game, player, appleSpawner);
 		UpdateApple(game, player, appleSpawner);
+		UpdatePlayer(game, player, appleSpawner);
 
-		
+		// player's snake eat itself or player's snake out of game window
+		if (IsSelfCollision(player.body) || PlayerOutOfBound(game, player.body[0])) {
+			game.currentState = GS_PLAYER_DEAD;
+		}
+	}
+	else if (game.currentState == GS_PLAYER_DEAD) {
+		player.animation = (player.animation + 1) % PLAYER_ANIMATION_LENGTH;
+	}
+	else if (game.currentState == GS_WAIT) {
+		game.waitTimer--;
+
+		if (game.waitTimer == 0) {
+			ResetPlayer(game, player);
+			ResetApples(appleSpawner);
+			game.currentState = GS_PLAY;
+		}
 	}
 }
 
@@ -266,15 +317,28 @@ void ResolveAppleCollision(Player& player, AppleSpawner& appleSpawner, Apple* ap
 }
 
 void DrawGame(const Game& game, const Player& player, const AppleSpawner& appleSpawner) {
-	DrawApples(appleSpawner);
-	DrawPlayer(player);
-	
+	if (game.currentState == GS_INTRO) {
+		DrawIntroScreen(game);
+	}
+	else if (game.currentState == GS_GAME_OVER) {
+		
+	}
+	else if (game.currentState == GS_HIGH_SCORES) {
+
+	}
+	else {
+		if (game.currentState == GS_WAIT) {
+			ShowPlayerLive(game, player);
+		}
+		DrawApples(appleSpawner);
+		DrawPlayer(player);
+	}
 }
 
 void DrawPlayer(const Player& player) {
 	for (int i = 0; i < player.length; i++) {
 		SnakePart block = player.body[i];
-		DrawCharacter(block.position.x, block.position.y, SNAKE_SPRITE);
+		DrawCharacter(block.position.x, block.position.y, SNAKE_SPRITE[player.animation]);
 	}
 }
 
@@ -290,7 +354,7 @@ void DrawApples(const AppleSpawner& appleSpawner) {
 void UpdatePlayer(Game& game, Player& player, AppleSpawner& appleSpawner) {
 	player.movementTime--;
 
-	if (player.movementTime < 0) {
+	if (player.movementTime == 0) {
 		// move player
 		MovePlayer(game, player);
 		ResetMovementTime(player);
@@ -334,3 +398,47 @@ void UpdatePlayer(Game& game, Player& player, AppleSpawner& appleSpawner) {
 	}
 }
 
+bool IsSelfCollision(vector<SnakePart>& snakeBody) {
+	SnakePart head = snakeBody[0];
+
+	for (int i = 1; i < snakeBody.size(); i++) {
+		if (head.position.x == snakeBody[i].position.x &&
+			head.position.y == snakeBody[i].position.y) {
+			return true;
+		}
+	}
+	return false;
+}
+
+bool PlayerOutOfBound(const Game& game, const SnakePart& snakeHead) {
+	return (snakeHead.position.x >= game.windowSize.width) || (snakeHead.position.x < 0)
+		|| (snakeHead.position.y < 0) || (snakeHead.position.y >= game.windowSize.height);
+}
+
+void ShowPlayerLive(const Game& game, const Player& player) {
+	string gameTip = "Snake will grow every time you eat an apple";
+	string playerLiveStr = "Now you have " + to_string(player.live) + " lives";
+
+	const int yPos = game.windowSize.height / 2 - 3;
+	const int xPos1 = game.windowSize.width / 2 - gameTip.length() / 2;
+	const int xPos2 = game.windowSize.width / 2 - playerLiveStr.length() / 2;
+
+	DrawString(xPos1, yPos, gameTip.c_str());
+	DrawString(xPos2, yPos + 1, playerLiveStr.c_str());
+}
+
+void DrawIntroScreen(const Game& game) {
+	string startString = "Welcome to Text Snake";
+	string pressSpaceString = "Press Space Bar to continue";
+	string pressSString = "Press (s) to go to the high scores";
+
+	const int yPos = game.windowSize.height / 2;
+
+	const int startXPos = game.windowSize.width / 2 - startString.length() / 2;
+	const int pressSpaceXPos = game.windowSize.width / 2 - pressSpaceString.length() / 2;
+	const int pressSXPos = game.windowSize.width / 2 - pressSString.length() / 2;
+
+	DrawString(startXPos, yPos, startString.c_str());
+	DrawString(pressSpaceXPos, yPos + 1, pressSpaceString.c_str());
+	DrawString(pressSXPos, yPos + 2, pressSString.c_str());
+}
