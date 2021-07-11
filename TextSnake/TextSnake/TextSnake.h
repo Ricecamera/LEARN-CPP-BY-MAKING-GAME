@@ -5,10 +5,13 @@
 #include <string>
 #include <ctime>
 #include <cstdlib>
+#include <algorithm>
+#include <fstream>
 
 const char APPLE_SPRITE = 'o';
 const char SNAKE_SPRITE[] = { '#', ' '};
 
+const char* filename = "TextSnakeScoreTable.txt";
 enum {
 	MAX_NUMBER_OF_LIVE = 3,
 	MAX_NUMBER_OF_APPLE = 4,
@@ -20,7 +23,8 @@ enum {
 	NOT_IN_PLAY = -1,
 	PLAYER_WAIT_TIME = 48,
 	PLAYER_ANIMATION_LENGTH = 2,
-	MAX_LENGTH_OF_NAME = 4
+	MAX_LENGTH_OF_NAME = 4,
+	MAX_HIGH_SCORES = 15
 };
 
 enum GameState {

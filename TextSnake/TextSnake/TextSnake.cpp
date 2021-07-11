@@ -6,27 +6,32 @@ using namespace std;
 void InitGame(Game& game);
 void InitPlayer(Game& game, Player& player);
 void InitAppleSpawner(AppleSpawner& appleSpawner);
+void LoadHighScore(HighScoreTable& table);
 
-int HandleInput(Game& game, Player& player);
+int HandleInput(Game& game, Player& player, HighScoreTable& table, AppleSpawner& appleSpawner);
 void MovePlayer(const Game& game, Player& player);
 void ResetMovementTime(Player& player);
 void ChangePlayerDirection(Player& player, PlayerDirection direction);
 void UpdateGame(Game& game, Player& player, AppleSpawner& appleSpawner, clock_t dt);
 void UpdateApple(const Game& game, Player& player, AppleSpawner& appleSpawner);
 void UpdatePlayer(Game& game, Player& player, AppleSpawner& appleSpawner);
+void SaveHighScore(const HighScoreTable& table);
 
 bool IsCollision(Player& player, Apple& apple);
 bool IsSelfCollision(vector<SnakePart>& snakeBody);
 bool PlayerOutOfBound(const Game& game, const SnakePart& snakeHead);
 void ResolveAppleCollision(Player& player, AppleSpawner& appleSpawner, Apple* apple);
 
-void DrawGame(const Game& game, const Player& player, const AppleSpawner& appleSpawner);
+void DrawGame(const Game& game, const Player& player, const AppleSpawner& appleSpawner, const HighScoreTable& table);
 void DrawPlayer(const Player& player);
 void DrawApples(const AppleSpawner& appleSpawner);
 void ShowPlayerLive(const Game& game, const Player& player);
 void DrawIntroScreen(const Game& game);
 void DrawGameOverScreen(const Game& game);
+void DrawHighScoreTable(const Game& game, const HighScoreTable& table);
+void AddHighScore(HighScoreTable& table, int score, const std::string& name);
 
+void ResetGame(Game& game, Player& player, AppleSpawner& appleSpawner);
 void ResetPlayer(Game& game, Player& player);
 void ResetApples(AppleSpawner& appleSpawner);
 void ResetGameOverPositionCursor(Game& game);
@@ -37,18 +42,20 @@ int main() {
 	Game game;
 	Player player;
 	AppleSpawner appleSpawner;
+	HighScoreTable table;
 
 	InitializeCurses(true);
 	InitGame(game);
 	InitPlayer(game, player);
 	InitAppleSpawner(appleSpawner);
+	LoadHighScore(table);
 
 	bool quit = false;
 	int input{ 0 };
 	clock_t lastTime = clock(); // from game loop
 
 	while (!quit) {
-		input = HandleInput(game, player);
+		input = HandleInput(game, player, table, appleSpawner);
 
 		if (input != 'q') {
 
@@ -60,7 +67,7 @@ int main() {
 
 				UpdateGame(game, player, appleSpawner, dt);
 				ClearScreen();
-				DrawGame(game, player, appleSpawner);
+				DrawGame(game, player, appleSpawner, table);
 				RefreshScreen();
 			}
 		}
@@ -69,7 +76,6 @@ int main() {
 		}
 	}
 
-	//ClearSnakeBody(player);
 	ShutdownCurses();
 	return 0;
 }
@@ -77,11 +83,20 @@ int main() {
 void InitGame(Game& game) {
 	game.windowSize.height = ScreenHeight();
 	game.windowSize.width = ScreenWidth();
-	game.currentState = GS_GAME_OVER;
+	game.currentState = GS_INTRO;
 	game.level = 1;
 	game.gameTimer = 0;
-	game.waitTimer = PLAYER_WAIT_TIME;
 
+	ResetGameOverPositionCursor(game);
+}
+
+void ResetGame(Game& game, Player& player, AppleSpawner& appleSpawner) {
+	game.gameTimer = 0;
+	player.live = MAX_NUMBER_OF_LIVE;
+	player.score = 0;
+
+	ResetPlayer(game, player);
+	ResetApples(appleSpawner);
 	ResetGameOverPositionCursor(game);
 }
 
@@ -90,7 +105,6 @@ void InitPlayer(Game& game, Player& player) {
 	player.score = 0;
 	ResetPlayer(game, player);
 }
-
 
 void ResetPlayer(Game& game, Player& player) {
 	player.body.clear();
@@ -119,13 +133,20 @@ void ResetApples(AppleSpawner& appleSpawner) {
 	appleSpawner.appleInPlay = 0;
 }
 
-int HandleInput(Game& game, Player& player) {
+int HandleInput(Game& game, Player& player, HighScoreTable& table, AppleSpawner& appleSpawner) {
 	int input = GetChar();
 
 	switch (input) {
 	case 'q':
 		return input;
-
+	case 's':
+		if (game.currentState == GS_INTRO) {
+			game.currentState = GS_HIGH_SCORES;
+		}
+		else if (game.currentState == GS_HIGH_SCORES) {
+			game.currentState = GS_INTRO;
+		}
+		break;
 	case KEY_LEFT:
 		if (game.currentState == GS_PLAY) {
 			ChangePlayerDirection(player, PS_LEFT);
@@ -176,6 +197,8 @@ int HandleInput(Game& game, Player& player) {
 				game.currentState = GS_GAME_OVER;
 			}
 			else {
+				ResetApples(appleSpawner);
+				ResetPlayer(game, player);
 				game.currentState = GS_WAIT;
 				game.waitTimer = PLAYER_WAIT_TIME;
 			}
@@ -185,12 +208,16 @@ int HandleInput(Game& game, Player& player) {
 			game.waitTimer = PLAYER_WAIT_TIME;
 		}
 		else if (game.currentState == GS_GAME_OVER) {
-
+			game.playerName[MAX_LENGTH_OF_NAME] = '\0';
+			AddHighScore(table, player.score, game.playerName);
+			ResetGame(game, player, appleSpawner);
+			game.currentState = GS_HIGH_SCORES;
+		}
+		else if (game.currentState == GS_HIGH_SCORES) {
+			game.currentState = GS_INTRO;
 		}
 	}
 	
-
-
 	return ' ';
 }
 
@@ -270,8 +297,6 @@ void UpdateGame(Game& game, Player& player, AppleSpawner& appleSpawner, clock_t 
 		game.waitTimer--;
 
 		if (game.waitTimer == 0) {
-			ResetPlayer(game, player);
-			ResetApples(appleSpawner);
 			game.currentState = GS_PLAY;
 		}
 	}
@@ -345,7 +370,7 @@ void ResolveAppleCollision(Player& player, AppleSpawner& appleSpawner, Apple* ap
 	appleSpawner.appleInPlay--;
 }
 
-void DrawGame(const Game& game, const Player& player, const AppleSpawner& appleSpawner) {
+void DrawGame(const Game& game, const Player& player, const AppleSpawner& appleSpawner, const HighScoreTable& table) {
 	if (game.currentState == GS_INTRO) {
 		DrawIntroScreen(game);
 	}
@@ -353,7 +378,7 @@ void DrawGame(const Game& game, const Player& player, const AppleSpawner& appleS
 		DrawGameOverScreen(game);
 	}
 	else if (game.currentState == GS_HIGH_SCORES) {
-
+		DrawHighScoreTable(game, table);
 	}
 	else {
 		if (game.currentState == GS_WAIT) {
@@ -461,7 +486,7 @@ void DrawIntroScreen(const Game& game) {
 	string pressSpaceString = "Press Space Bar to continue";
 	string pressSString = "Press (s) to go to the high scores";
 
-	const int yPos = game.windowSize.height / 2;
+	const int yPos = game.windowSize.height / 2 - 1;
 
 	const int startXPos = game.windowSize.width / 2 - startString.length() / 2;
 	const int pressSpaceXPos = game.windowSize.width / 2 - pressSpaceString.length() / 2;
@@ -477,7 +502,7 @@ void DrawGameOverScreen(const Game& game) {
 	string pressSpaceString = "Press Space Bar to continue";
 	string namePromptString = "Please Enter you name: ";
 
-	const int yPos = game.windowSize.height / 2;
+	const int yPos = game.windowSize.height / 2 - 3;
 
 	const int gameOverXPos = game.windowSize.width / 2 - gameOverString.length()/ 2;
 	const int pressSpaceXPos = game.windowSize.width / 2 - pressSpaceString.length() / 2;
@@ -506,5 +531,89 @@ void ResetGameOverPositionCursor(Game& game) {
 	for (int i = 0; i < MAX_LENGTH_OF_NAME; i++) {
 		game.playerName[i] = 'A';
 		game.gameOverVPositionCursor[i] = 0; // Be at 'A'
+	}
+}
+
+bool ScoreCompare(const Score& score1, const Score& score2) {
+	return score1.score > score2.score;
+}
+
+void AddHighScore(HighScoreTable& table, int score, const std::string& name) {
+	Score highScore;
+	highScore.score = score;
+	highScore.name = name;
+
+	bool alreadyPlay = false;
+	for (auto& player : table.scores) {
+		if (player.name == name) {
+			if (score > player.score) {
+				player.score = score;
+			}
+			alreadyPlay = true;
+		}
+	}
+
+	if (!alreadyPlay) {
+		table.scores.push_back(highScore);
+	}
+	
+	sort(table.scores.begin(), table.scores.end(), ScoreCompare);
+
+	SaveHighScore(table);
+}
+
+void SaveHighScore(const HighScoreTable& table) {
+	ofstream outFile;
+	outFile.open(filename);
+
+	if (outFile.is_open()) {
+		for (int i = 0; i < table.scores.size() && i < MAX_HIGH_SCORES; i++) {
+			outFile << table.scores[i].name << " " << table.scores[i].score << endl;
+		}
+	}
+}
+
+void LoadHighScore(HighScoreTable& table) {
+	ifstream inFile;
+
+	inFile.open(filename);
+
+	string name;
+	int scoreVal;
+
+	Score score;
+
+	if (inFile.is_open()) {
+		while (!inFile.eof()) {
+			inFile >> ws;
+			if (inFile.eof()) {
+				break;
+			}
+
+			inFile >> name >> scoreVal;
+			score.name = name;
+			score.score = scoreVal;
+
+			table.scores.push_back(score);
+		}
+
+		inFile.close();
+	}
+}
+
+void DrawHighScoreTable(const Game& game, const HighScoreTable& table) {
+	string title = "High Scores";
+	int titleXPos = game.windowSize.width / 2 - title.length() / 2;
+	int yPos = 5;
+	int yPadding = 2;
+
+	attron(A_UNDERLINE);
+	DrawString(titleXPos, yPos, title);
+	attroff(A_UNDERLINE);
+
+	for (int i = 0; i < table.scores.size() && i < MAX_HIGH_SCORES; i++) {
+		Score score = table.scores[i];
+
+		mvprintw(yPos + (i + 1) * yPadding, titleXPos - MAX_LENGTH_OF_NAME/2, "%s        %i", score.name.c_str(), score.score);
 	}
 }
