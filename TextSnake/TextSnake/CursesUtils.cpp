@@ -63,6 +63,6 @@ void DrawSprite(int xPos, int yPos, const char * sprite[], int spriteHeight, int
 	}
 }
 
-void DrawString(int xPos, int yPos, const char* string) {
-	mvprintw(yPos, xPos, string);
+void DrawString(int xPos, int yPos, const std::string& string) {
+	mvprintw(yPos, xPos, string.c_str());
 }

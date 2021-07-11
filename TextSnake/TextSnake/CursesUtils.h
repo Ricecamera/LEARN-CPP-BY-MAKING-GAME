@@ -9,6 +9,7 @@
 #define CURSESUTILS_H_
 
 #include "curses.h"
+#include <string>
 
 enum ArrowKeys
 {
@@ -28,6 +29,6 @@ int GetChar();
 void DrawCharacter(int xPos, int yPos, char aCharacter);
 void MoveCursor(int xPos, int yPos);
 void DrawSprite(int xPos, int yPos, const char* sprite[], int spriteHeight, int offset = 0);
-void DrawString(int xPos, int yPos, const char* string);
+void DrawString(int xPos, int yPos, const std::string& string);
 
 #endif /* CURSESUTILS_H_ */
